@@ -1,6 +1,7 @@
 using api_todo.Data.EF;
 using api_todo.Data.Entities;
-using api_todo.Models.Todos;
+using api_todo.Models.TodoChilds;
+using api_todo.Models.TodoChildsl;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,41 +10,34 @@ namespace api_todo.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
-public class TodosController : AuthController
+public class TodoChildsController : AuthController
 {
 
-    public TodosController(TodoContext context, ILogger<TodosController> logger) : base(context, logger)
+    public TodoChildsController(TodoContext context, ILogger<TodosController> logger) : base(context, logger)
     {
-    }
-
-    [HttpGet]
-    public IActionResult GetAll()
-    {
-        var todos = _context.Todos.Where(x => x.UserId == GetUserId()).ToList();
-        return Ok(todos);
     }
 
     [HttpGet("{Id}")]
     public IActionResult Get(int Id)
     {
-        var todoChilds = _context.TodoChilds.Where(x => x.TodoId == Id);
-        return Ok(todoChilds);
+        var todoChild = _context.TodoChilds.FirstOrDefault(x => x.Id == Id);
+        return Ok(todoChild);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] TodoCreate todoCreate)
+    public async Task<IActionResult> Create([FromBody] TodoChildCreate todoChildCreate)
     {
         if(!ModelState.IsValid)
         {
             return NotFound();
         }
         try{
-            var todo = new Todo()
+            var todoChild = new TodoChild()
             { 
-                Title = todoCreate.Title,
-                UserId = GetUserId(),
+                Content = todoChildCreate.Content,
+                TodoId = todoChildCreate.TodoId
             };
-            var result = _context.Add(todo);
+            var result = _context.Add(todoChild);
             _logger.LogInformation("____________" + result);
             await _context.SaveChangesAsync();
             return Ok();
@@ -55,20 +49,20 @@ public class TodosController : AuthController
     }
 
     [HttpPut("{Id}")]
-    public async Task<IActionResult> Update(int Id, [FromBody] TodoUpdate todoUpdate)
+    public async Task<IActionResult> Update(int Id, [FromBody] TodoChildUpdate todoChildUpdate)
     {
         if (!ModelState.IsValid)
         {
             return NotFound();
         }
-        var todo = _context.Todos.FirstOrDefault(x => x.Id == Id);
-        if (todo == null)
+        var todoChild = _context.TodoChilds.FirstOrDefault(x => x.Id == Id);
+        if (todoChild == null)
         {
             return NotFound("Todo is empty");
         }
-        todo.Title = todoUpdate.Title;
-        todo.Status = todoUpdate.Status;
-        var result = _context.Update(todo);
+        todoChild.Content = todoChildUpdate.Content;
+        todoChild.Status = todoChildUpdate.Status;
+        var result = _context.Update(todoChild);
         await _context.SaveChangesAsync();
         return Ok();
     }
@@ -80,12 +74,12 @@ public class TodosController : AuthController
         {
             return NotFound();
         }
-        var todo = _context.Todos.FirstOrDefault(x => x.Id == Id);
-        if (todo == null)
+        var todoChild = _context.TodoChilds.FirstOrDefault(x => x.Id == Id);
+        if (todoChild == null)
         {
             return NotFound("Todo is empty");
         }
-        var result = _context.Remove(todo);
+        var result = _context.Remove(todoChild);
         await _context.SaveChangesAsync();
 
         return Ok();

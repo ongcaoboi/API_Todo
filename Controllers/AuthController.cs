@@ -1,67 +1,33 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using api_todo.Data.EF;
 using api_todo.Data.Entities;
-using api_todo.Models.Users;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 
 namespace api_todo.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly IConfiguration _config;
-    private readonly TodoContext _context;
-    public AuthController(IConfiguration config, TodoContext context)
+    protected readonly TodoContext _context;
+    protected readonly ILogger<AuthController> _logger;
+
+    public AuthController(TodoContext context, ILogger<AuthController> logger)
     {
-        _config = config;
         _context = context;
+        _logger = logger;
     }
 
-    [AllowAnonymous]
-    [HttpPost]
-    public IActionResult Login([FromBody] UserLogin userLogin)
+    protected Guid GetUserId()
     {
-        if (!ModelState.IsValid)
-        {
-            return NotFound();
-        }
+        var identity = HttpContext.User.Identity as ClaimsIdentity;
+            var userClaims = identity.Claims;
 
-        var user = _context.Users.FirstOrDefault(
-            x => x.Email.ToLower() == userLogin.Email.ToLower() &&
-                x .Password == userLogin.Password
-            );
+        var Id = userClaims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier)?.Value;
 
-        if (user == null)
-        {
-            return NotFound("User not found");
-        }
-
-        var token = GenerateToken(user);
-        return Ok(token);
+        return new Guid(Id);
     }
-    
-    private string GenerateToken(User user)
+
+    protected User GetCurrentUser()
     {
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-        var claims = new []
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Name),
-            new Claim(ClaimTypes.Email, user.Email)
-        };
-
-        var token = new JwtSecurityToken(_config["Jwt:Issuer"],
-            _config["Jwt:Audience"],
-            claims,
-            expires: DateTime.Now.AddMinutes(15),
-            signingCredentials: credentials
-        );
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return _context.Users.FirstOrDefault(x => x.Id == GetUserId());
     }
 }
